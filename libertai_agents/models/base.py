@@ -1,12 +1,11 @@
-import json
-import re
+from abc import ABC, abstractmethod
 
-from transformers import AutoTokenizer, PreTrainedTokenizerFast
+from transformers import PreTrainedTokenizerFast, AutoTokenizer
 
 from libertai_agents.interfaces import Message, MessageRoleEnum, ToolCallFunction
 
 
-class Model:
+class Model(ABC):
     tokenizer: PreTrainedTokenizerFast
     vm_url: str
 
@@ -21,11 +20,11 @@ class Model:
         return self.tokenizer.apply_chat_template(conversation=raw_messages, tools=tools, tokenize=False,
                                                   add_generation_prompt=True)
 
+    @abstractmethod
+    def generate_tool_call_id(self) -> str | None:
+        pass
+
     @staticmethod
+    @abstractmethod
     def extract_tool_calls_from_response(response: str) -> list[ToolCallFunction]:
-        tool_calls = re.findall("^<tool_call>\s*(.*)\s*</tool_call>$", response)
-        return [ToolCallFunction(**json.loads(call)) for call in tool_calls]
-
-
-Hermes2Pro = Model(model_id="NousResearch/Hermes-2-Pro-Llama-3-8B",
-                   vm_url='https://curated.aleph.cloud/vm/84df52ac4466d121ef3bb409bb14f315de7be4ce600e8948d71df6485aa5bcc3/completion')
+        pass

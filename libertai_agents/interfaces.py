@@ -18,6 +18,7 @@ class ToolCallFunction(BaseModel):
 
 class MessageToolCall(BaseModel):
     type: str
+    id: Optional[str] = None
     function: ToolCallFunction
 
 
@@ -25,6 +26,7 @@ class Message(BaseModel):
     role: MessageRoleEnum
     name: Optional[str] = None
     content: Optional[str] = None
+    tool_call_id: Optional[str] = None
     tool_calls: Optional[list[MessageToolCall]] = None
 
 
