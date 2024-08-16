@@ -1,7 +1,7 @@
 import asyncio
 
 from libertai_agents.agents import ChatAgent
-from libertai_agents.interfaces import MessageRoleEnum, Message
+from libertai_agents.interfaces import Message, MessageRoleEnum
 from libertai_agents.models import Hermes2Pro
 from libertai_agents.tools import get_current_temperature
 
