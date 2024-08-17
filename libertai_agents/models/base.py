@@ -1,16 +1,22 @@
+import logging
 from abc import ABC, abstractmethod
-
-from transformers import PreTrainedTokenizerFast, AutoTokenizer
 
 from libertai_agents.interfaces import Message, ToolCallFunction, MessageRoleEnum
 
+# Disables the error about models not available
+logging.getLogger("transformers").disabled = True
+
 
 class Model(ABC):
+    from transformers import PreTrainedTokenizerFast
+
     tokenizer: PreTrainedTokenizerFast
     vm_url: str
     system_message: bool
 
     def __init__(self, model_id: str, vm_url: str, system_message: bool = True):
+        from transformers import AutoTokenizer
+
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         self.vm_url = vm_url
         self.system_message = system_message

@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Callable
 
 import aiohttp
@@ -28,7 +29,7 @@ class ChatAgent:
         if len(messages) == 0:
             raise ValueError("No previous message to respond to")
         if messages[-1].role not in [MessageRoleEnum.user, MessageRoleEnum.tool]:
-            raise ValueError("Last message is not from the user or tool")
+            raise ValueError("Last message is not from the user or a tool response")
 
         prompt = self.model.generate_prompt(messages, self.system_prompt, self.tools)
         async with aiohttp.ClientSession() as session:
@@ -37,6 +38,7 @@ class ChatAgent:
             tool_calls = self.model.extract_tool_calls_from_response(response)
             if len(tool_calls) == 0:
                 return response
+
             tool_calls_message = self.__create_tool_calls_message(tool_calls)
             messages.append(tool_calls_message)
             tool_messages = self.__execute_tool_calls(tool_calls_message.tool_calls)
@@ -47,7 +49,7 @@ class ChatAgent:
 
         async with session.post(self.model.vm_url, json=params.model_dump()) as response:
             # TODO: handle errors and retries
-            if response.status == 200:
+            if response.status == HTTPStatus.OK:
                 response_data = await response.json()
                 return response_data["content"]
 
