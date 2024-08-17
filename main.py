@@ -11,7 +11,7 @@ async def start():
                       system_prompt="You are a helpful assistant",
                       tools=[get_current_temperature])
     response = await agent.generate_answer(
-        [Message(role=MessageRoleEnum.user, content="What's the temperature in Paris and in Lyon ?")])
+        [Message(role=MessageRoleEnum.user, content="What's the temperature in Paris and in Lyon in Celsius ?")])
     print(response)
 
 

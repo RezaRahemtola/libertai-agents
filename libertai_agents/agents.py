@@ -3,7 +3,8 @@ from typing import Callable
 import aiohttp
 from aiohttp import ClientSession
 
-from libertai_agents.interfaces import Message, MessageRoleEnum, LlamaCppParams, MessageToolCall, ToolCallFunction
+from libertai_agents.interfaces import Message, MessageRoleEnum, LlamaCppParams, MessageToolCall, ToolCallFunction, \
+    ToolCallMessage, ToolResponseMessage
 from libertai_agents.models import Model
 from libertai_agents.utils import find
 
@@ -30,15 +31,15 @@ class ChatAgent:
             raise ValueError("Last message is not from the user or tool")
 
         prompt = self.model.generate_prompt(messages, self.system_prompt, self.tools)
-        print(prompt)
         async with aiohttp.ClientSession() as session:
             response = await self.__call_model(session, prompt)
 
             tool_calls = self.model.extract_tool_calls_from_response(response)
             if len(tool_calls) == 0:
                 return response
-            messages.append(self.__create_tool_calls_message(tool_calls))
-            tool_messages = self.__execute_tool_calls(tool_calls)
+            tool_calls_message = self.__create_tool_calls_message(tool_calls)
+            messages.append(tool_calls_message)
+            tool_messages = self.__execute_tool_calls(tool_calls_message.tool_calls)
             return await self.generate_answer(messages + tool_messages)
 
     async def __call_model(self, session: ClientSession, prompt: str):
@@ -50,24 +51,26 @@ class ChatAgent:
                 response_data = await response.json()
                 return response_data["content"]
 
-    def __execute_tool_calls(self, tool_calls: list[ToolCallFunction]) -> list[Message]:
+    def __execute_tool_calls(self, tool_calls: list[MessageToolCall]) -> list[Message]:
         # TODO: support async function calls
-        messages = []
+        messages: list[Message] = []
         for call in tool_calls:
-            function_name = call.name
+            function_name = call.function.name
             function_to_call = find(lambda x: x.__name__ == function_name, self.tools)
             if function_to_call is None:
                 # TODO: handle error
                 continue
-            function_response = function_to_call(*call.arguments.values())
-            messages.append(Message(role=MessageRoleEnum.tool, name=function_name, content=str(function_response)))
+            function_response = function_to_call(*call.function.arguments.values())
+            messages.append(
+                ToolResponseMessage(role=MessageRoleEnum.tool, name=function_name, tool_call_id=call.id,
+                                    content=str(function_response)))
         return messages
 
-    def __create_tool_calls_message(self, tool_calls: list[ToolCallFunction]) -> Message:
-        return Message(role=MessageRoleEnum.assistant,
-                       tool_calls=[MessageToolCall(type="function",
-                                                   id=self.model.generate_tool_call_id(),
-                                                   function=ToolCallFunction(name=call.name,
-                                                                             arguments=call.arguments)) for
-                                   call in
-                                   tool_calls])
+    def __create_tool_calls_message(self, tool_calls: list[ToolCallFunction]) -> ToolCallMessage:
+        return ToolCallMessage(role=MessageRoleEnum.assistant,
+                               tool_calls=[MessageToolCall(type="function",
+                                                           id=self.model.generate_tool_call_id(),
+                                                           function=ToolCallFunction(name=call.name,
+                                                                                     arguments=call.arguments)) for
+                                           call in
+                                           tool_calls])

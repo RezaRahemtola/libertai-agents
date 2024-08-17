@@ -1,23 +1,22 @@
 import json
-import re
-
-from transformers import PreTrainedTokenizerFast
+import random
+import string
 
 from libertai_agents.interfaces import ToolCallFunction
 from libertai_agents.models.base import Model
 
 
 class MistralModel(Model):
-    tokenizer: PreTrainedTokenizerFast
-    vm_url: str
-
     def __init__(self, model_id: str, vm_url: str):
-        super().__init__(model_id, vm_url)
+        super().__init__(model_id, vm_url, system_message=False)
 
     @staticmethod
     def extract_tool_calls_from_response(response: str) -> list[ToolCallFunction]:
-        tool_calls = re.findall("<tool_call>\s*(.*)\s*</tool_call>", response)
-        return [ToolCallFunction(**json.loads(call)) for call in tool_calls]
+        try:
+            tool_calls = json.loads(response)
+            return [ToolCallFunction(**call) for call in tool_calls]
+        except Exception:
+            return []
 
-    def generate_tool_call_id(self) -> str | None:
-        return None
+    def generate_tool_call_id(self) -> str:
+        return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(9))

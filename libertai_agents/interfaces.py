@@ -24,10 +24,16 @@ class MessageToolCall(BaseModel):
 
 class Message(BaseModel):
     role: MessageRoleEnum
-    name: Optional[str] = None
     content: Optional[str] = None
+
+
+class ToolCallMessage(Message):
+    tool_calls: list[MessageToolCall]
+
+
+class ToolResponseMessage(Message):
+    name: Optional[str] = None
     tool_call_id: Optional[str] = None
-    tool_calls: Optional[list[MessageToolCall]] = None
 
 
 class LlamaCppParams(BaseModel):
