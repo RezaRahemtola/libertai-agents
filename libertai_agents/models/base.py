@@ -12,22 +12,35 @@ class Model(ABC):
 
     tokenizer: PreTrainedTokenizerFast
     vm_url: str
+    context_length: int
     system_message: bool
 
-    def __init__(self, model_id: str, vm_url: str, system_message: bool = True):
+    def __init__(self, model_id: str, vm_url: str, context_length: int, system_message: bool = True):
         from transformers import AutoTokenizer
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         self.vm_url = vm_url
+        self.context_length = context_length
         self.system_message = system_message
 
+    def __count_tokens(self, content: str) -> int:
+        tokens = self.tokenizer.tokenize(content)
+        return len(tokens)
+
     def generate_prompt(self, messages: list[Message], system_prompt: str, tools: list) -> str:
-        if self.system_message:
-            messages.insert(0, Message(role=MessageRoleEnum.system, content=system_prompt))
+        system_message = Message(role=MessageRoleEnum.system, content=system_prompt)
         raw_messages = list(map(lambda x: x.model_dump(), messages))
 
-        return self.tokenizer.apply_chat_template(conversation=raw_messages, tools=tools, tokenize=False,
-                                                  add_generation_prompt=True)
+        for i in range(len(raw_messages)):
+            included_messages: list = [system_message] + raw_messages[i:]
+            prompt = self.tokenizer.apply_chat_template(conversation=included_messages, tools=tools,
+                                                        tokenize=False,
+                                                        add_generation_prompt=True)
+            if not isinstance(prompt, str):
+                raise TypeError("Generated prompt isn't a string")
+            if self.__count_tokens(prompt) <= self.context_length:
+                return prompt
+        raise ValueError(f"Can't fit messages into the available context length ({self.context_length} tokens)")
 
     def generate_tool_call_id(self) -> str | None:
         return None

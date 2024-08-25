@@ -7,7 +7,7 @@ from libertai_agents.tools import get_current_temperature
 
 
 async def start():
-    agent = ChatAgent(model=get_model("mistralai/Mistral-Nemo-Instruct-2407"),
+    agent = ChatAgent(model=get_model("NousResearch/Hermes-2-Pro-Llama-3-8B"),
                       system_prompt="You are a helpful assistant",
                       tools=[get_current_temperature])
     response = await agent.generate_answer(

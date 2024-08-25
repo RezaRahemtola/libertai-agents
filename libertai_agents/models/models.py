@@ -10,6 +10,7 @@ from libertai_agents.models.mistral import MistralModel
 
 class ModelConfiguration(BaseModel):
     vm_url: str
+    context_length: int
     constructor: typing.Type[Model]
 
 
@@ -20,13 +21,17 @@ ModelId = typing.Literal[
 ]
 MODEL_IDS: list[ModelId] = list(typing.get_args(ModelId))
 
+# TODO: update URLs with prod, and check context size (if we deploy it with a lower one)
 MODELS_CONFIG: dict[ModelId, ModelConfiguration] = {
     "NousResearch/Hermes-2-Pro-Llama-3-8B": ModelConfiguration(
         vm_url="https://curated.aleph.cloud/vm/84df52ac4466d121ef3bb409bb14f315de7be4ce600e8948d71df6485aa5bcc3/completion",
+        context_length=8192,
         constructor=HermesModel),
     "NousResearch/Hermes-3-Llama-3.1-8B": ModelConfiguration(vm_url="http://localhost:8080/completion",
+                                                             context_length=131_072,
                                                              constructor=HermesModel),
     "mistralai/Mistral-Nemo-Instruct-2407": ModelConfiguration(vm_url="http://localhost:8080/completion",
+                                                               context_length=131_072,
                                                                constructor=MistralModel)
 }
 
