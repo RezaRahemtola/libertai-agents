@@ -4,9 +4,11 @@ from typing import Callable, Awaitable, Any
 
 import aiohttp
 from aiohttp import ClientSession
+from fastapi import APIRouter, FastAPI
 
-from libertai_agents.interfaces import Message, MessageRoleEnum, LlamaCppParams, MessageToolCall, ToolCallFunction, \
-    ToolCallMessage, CustomizableLlamaCppParams, ToolResponseMessage
+from libertai_agents.interfaces.common import Message, MessageRoleEnum, LlamaCppParams, MessageToolCall, \
+    ToolCallFunction, ToolCallMessage, CustomizableLlamaCppParams, ToolResponseMessage
+from libertai_agents.interfaces.models import ModelInformation
 from libertai_agents.models import Model
 from libertai_agents.utils import find
 
@@ -16,6 +18,7 @@ class ChatAgent:
     system_prompt: str
     tools: list[Callable[..., Awaitable[Any]]]
     llamacpp_params: CustomizableLlamaCppParams
+    app: FastAPI
 
     def __init__(self, model: Model, system_prompt: str, tools: list[Callable[..., Awaitable[Any]]] | None = None,
                  llamacpp_params: CustomizableLlamaCppParams = CustomizableLlamaCppParams()):
@@ -28,6 +31,17 @@ class ChatAgent:
         self.system_prompt = system_prompt
         self.tools = tools
         self.llamacpp_params = llamacpp_params
+
+        # Define API routes
+        router = APIRouter()
+        router.add_api_route("/generate-answer", self.generate_answer, methods=["POST"])
+        router.add_api_route("/model", self.get_model_information, methods=["GET"])
+
+        self.app = FastAPI(title="LibertAI ChatAgent")
+        self.app.include_router(router)
+
+    def get_model_information(self) -> ModelInformation:
+        return ModelInformation(id=self.model.model_id, context_length=self.model.context_length)
 
     async def generate_answer(self, messages: list[Message]) -> str:
         if len(messages) == 0:

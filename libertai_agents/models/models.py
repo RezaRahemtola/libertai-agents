@@ -3,7 +3,7 @@ import typing
 from huggingface_hub import login
 from pydantic import BaseModel
 
-from libertai_agents.models.base import Model
+from libertai_agents.models.base import Model, ModelId
 from libertai_agents.models.hermes import HermesModel
 from libertai_agents.models.mistral import MistralModel
 
@@ -14,11 +14,6 @@ class ModelConfiguration(BaseModel):
     constructor: typing.Type[Model]
 
 
-ModelId = typing.Literal[
-    "NousResearch/Hermes-2-Pro-Llama-3-8B",
-    "NousResearch/Hermes-3-Llama-3.1-8B",
-    "mistralai/Mistral-Nemo-Instruct-2407"
-]
 MODEL_IDS: list[ModelId] = list(typing.get_args(ModelId))
 
 # TODO: update URLs with prod, and check context size (if we deploy it with a lower one)

@@ -2,7 +2,7 @@ import json
 import random
 import string
 
-from libertai_agents.interfaces import ToolCallFunction
+from libertai_agents.interfaces.common import ToolCallFunction
 from libertai_agents.models.base import Model
 
 

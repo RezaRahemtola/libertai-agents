@@ -1,24 +1,33 @@
 import logging
 from abc import ABC, abstractmethod
+from typing import Literal
 
-from libertai_agents.interfaces import Message, ToolCallFunction, MessageRoleEnum
+from libertai_agents.interfaces.common import Message, ToolCallFunction, MessageRoleEnum
 
 # Disables the error about models not available
 logging.getLogger("transformers").disabled = True
+
+ModelId = Literal[
+    "NousResearch/Hermes-2-Pro-Llama-3-8B",
+    "NousResearch/Hermes-3-Llama-3.1-8B",
+    "mistralai/Mistral-Nemo-Instruct-2407"
+]
 
 
 class Model(ABC):
     from transformers import PreTrainedTokenizerFast
 
     tokenizer: PreTrainedTokenizerFast
+    model_id: ModelId
     vm_url: str
     context_length: int
     system_message: bool
 
-    def __init__(self, model_id: str, vm_url: str, context_length: int, system_message: bool = True):
+    def __init__(self, model_id: ModelId, vm_url: str, context_length: int, system_message: bool = True):
         from transformers import AutoTokenizer
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+        self.model_id = model_id
         self.vm_url = vm_url
         self.context_length = context_length
         self.system_message = system_message
