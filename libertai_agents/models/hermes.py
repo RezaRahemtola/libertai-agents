@@ -1,12 +1,12 @@
 import json
 import re
 
-from libertai_agents.interfaces.common import ToolCallFunction
-from libertai_agents.models.base import Model
+from libertai_agents.interfaces.messages import ToolCallFunction
+from libertai_agents.models.base import Model, ModelId
 
 
 class HermesModel(Model):
-    def __init__(self, model_id: str, vm_url: str, context_length: int):
+    def __init__(self, model_id: ModelId, vm_url: str, context_length: int):
         super().__init__(model_id=model_id, vm_url=vm_url, context_length=context_length)
 
     @staticmethod

@@ -6,8 +6,9 @@ import aiohttp
 from aiohttp import ClientSession
 from fastapi import APIRouter, FastAPI
 
-from libertai_agents.interfaces.common import Message, MessageRoleEnum, LlamaCppParams, MessageToolCall, \
-    ToolCallFunction, ToolCallMessage, CustomizableLlamaCppParams, ToolResponseMessage
+from libertai_agents.interfaces.llamacpp import CustomizableLlamaCppParams, LlamaCppParams
+from libertai_agents.interfaces.messages import Message, MessageRoleEnum, MessageToolCall, ToolCallFunction, \
+    ToolCallMessage, ToolResponseMessage
 from libertai_agents.interfaces.models import ModelInformation
 from libertai_agents.models import Model
 from libertai_agents.utils import find
@@ -18,10 +19,20 @@ class ChatAgent:
     system_prompt: str
     tools: list[Callable[..., Awaitable[Any]]]
     llamacpp_params: CustomizableLlamaCppParams
-    app: FastAPI
+    app: FastAPI | None
 
     def __init__(self, model: Model, system_prompt: str, tools: list[Callable[..., Awaitable[Any]]] | None = None,
-                 llamacpp_params: CustomizableLlamaCppParams = CustomizableLlamaCppParams()):
+                 llamacpp_params: CustomizableLlamaCppParams = CustomizableLlamaCppParams(),
+                 expose_api: bool = True):
+        """
+        Create a LibertAI chatbot agent that can answer to messages from users
+
+        :param model: The LLM you want to use, selected from the available ones
+        :param system_prompt: Customize the behavior of the agent with your own prompt
+        :param tools: List of functions that the agent can call. Each function must be asynchronous, have a docstring and return a stringifyable response
+        :param llamacpp_params: Override params given to llamacpp when calling the model
+        :param expose_api: Set at False to avoid exposing an API (useful if you are using a custom trigger)
+        """
         if tools is None:
             tools = []
 
@@ -32,18 +43,28 @@ class ChatAgent:
         self.tools = tools
         self.llamacpp_params = llamacpp_params
 
-        # Define API routes
-        router = APIRouter()
-        router.add_api_route("/generate-answer", self.generate_answer, methods=["POST"])
-        router.add_api_route("/model", self.get_model_information, methods=["GET"])
+        if expose_api:
+            # Define API routes
+            router = APIRouter()
+            router.add_api_route("/generate-answer", self.generate_answer, methods=["POST"])
+            router.add_api_route("/model", self.get_model_information, methods=["GET"])
 
-        self.app = FastAPI(title="LibertAI ChatAgent")
-        self.app.include_router(router)
+            self.app = FastAPI(title="LibertAI ChatAgent")
+            self.app.include_router(router)
 
     def get_model_information(self) -> ModelInformation:
+        """
+        Get information about the model powering this agent
+        """
         return ModelInformation(id=self.model.model_id, context_length=self.model.context_length)
 
     async def generate_answer(self, messages: list[Message]) -> str:
+        """
+        Generate an answer based on a conversation
+
+        :param messages: List of messages previously sent in this conversation
+        :return: The string response of the agent
+        """
         if len(messages) == 0:
             raise ValueError("No previous message to respond to")
         if messages[-1].role not in [MessageRoleEnum.user, MessageRoleEnum.tool]:

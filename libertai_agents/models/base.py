@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Literal
 
-from libertai_agents.interfaces.common import Message, ToolCallFunction, MessageRoleEnum
+from libertai_agents.interfaces.messages import Message, ToolCallFunction, MessageRoleEnum
 
 # Disables the error about models not available
 logging.getLogger("transformers").disabled = True
@@ -37,6 +37,14 @@ class Model(ABC):
         return len(tokens)
 
     def generate_prompt(self, messages: list[Message], system_prompt: str, tools: list) -> str:
+        """
+        Generate the whole chat prompt
+
+        :param messages: Messages conversation history
+        :param system_prompt: Prompt to include in the beginning
+        :param tools: Available tools
+        :return: Prompt string
+        """
         system_message = Message(role=MessageRoleEnum.system, content=system_prompt)
         raw_messages = list(map(lambda x: x.model_dump(), messages))
 
@@ -52,6 +60,11 @@ class Model(ABC):
         raise ValueError(f"Can't fit messages into the available context length ({self.context_length} tokens)")
 
     def generate_tool_call_id(self) -> str | None:
+        """
+        Generate a random ID for a tool call
+        
+        :return: A string, or None if this model doesn't require a tool call ID
+        """
         return None
 
     @staticmethod

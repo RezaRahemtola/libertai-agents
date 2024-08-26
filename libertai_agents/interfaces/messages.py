@@ -34,11 +34,3 @@ class ToolCallMessage(Message):
 class ToolResponseMessage(Message):
     name: Optional[str] = None
     tool_call_id: Optional[str] = None
-
-
-class CustomizableLlamaCppParams(BaseModel):
-    stream: bool = False
-
-
-class LlamaCppParams(CustomizableLlamaCppParams):
-    prompt: str

@@ -32,6 +32,13 @@ MODELS_CONFIG: dict[ModelId, ModelConfiguration] = {
 
 
 def get_model(model_id: ModelId, hf_token: str | None = None) -> Model:
+    """
+    Get one of the available models
+
+    :param model_id: HuggingFace ID of the model, must be one of the supported models
+    :param hf_token: Optional access token, required to use gated models
+    :return: An instance of the model
+    """
     model_configuration = MODELS_CONFIG.get(model_id)
 
     if model_configuration is None:
