@@ -1,4 +1,4 @@
-def get_current_temperature(location: str, unit: str) -> float:
+async def get_current_temperature(location: str, unit: str) -> float:
     """
     Get the current temperature at a location.
 
