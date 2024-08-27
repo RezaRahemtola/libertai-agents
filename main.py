@@ -20,3 +20,11 @@ agent = ChatAgent(model=get_model("NousResearch/Hermes-2-Pro-Llama-3-8B"),
                   tools=[get_current_temperature])
 
 app = agent.app
+
+# async def main():
+#     async for message in agent.generate_answer(
+#             [Message(role=MessageRoleEnum.user, content="What is the temperature in Paris and in Lyon?")]):
+#         print(message)
+#
+#
+# asyncio.run(main())
