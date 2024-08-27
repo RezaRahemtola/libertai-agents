@@ -14,15 +14,18 @@ from libertai_agents.interfaces.models import ModelInformation
 from libertai_agents.models import Model
 from libertai_agents.utils import find
 
+MAX_TOOL_CALLS_DEPTH = 3
+
 
 class ChatAgent:
     model: Model
-    system_prompt: str
+    system_prompt: str | None
     tools: list[Callable[..., Awaitable[Any]]]
     llamacpp_params: CustomizableLlamaCppParams
     app: FastAPI | None
 
-    def __init__(self, model: Model, system_prompt: str, tools: list[Callable[..., Awaitable[Any]]] | None = None,
+    def __init__(self, model: Model, system_prompt: str | None = None,
+                 tools: list[Callable[..., Awaitable[Any]]] | None = None,
                  llamacpp_params: CustomizableLlamaCppParams = CustomizableLlamaCppParams(),
                  expose_api: bool = True):
         """
@@ -60,6 +63,51 @@ class ChatAgent:
         """
         return ModelInformation(id=self.model.model_id, context_length=self.model.context_length)
 
+    async def generate_answer(self, messages: list[Message], only_final_answer: bool = True) -> AsyncIterable[Message]:
+        """
+        Generate an answer based on a conversation
+
+        :param messages: List of messages previously sent in this conversation
+        :param only_final_answer: Only yields the final answer without include the thought process (tool calls and their response)
+        :return: The string response of the agent
+        """
+        if len(messages) == 0:
+            raise ValueError("No previous message to respond to")
+        if messages[-1].role not in [MessageRoleEnum.user, MessageRoleEnum.tool]:
+            raise ValueError("Last message is not from the user or a tool response")
+
+        for _ in range(MAX_TOOL_CALLS_DEPTH):
+            prompt = self.model.generate_prompt(messages, self.tools, system_prompt=self.system_prompt)
+            async with aiohttp.ClientSession() as session:
+                response = await self.__call_model(session, prompt)
+
+                if response is None:
+                    # TODO: handle error correctly
+                    raise ValueError("Model didn't respond")
+
+                tool_calls = self.model.extract_tool_calls_from_response(response)
+                if len(tool_calls) == 0:
+                    yield Message(role=MessageRoleEnum.assistant, content=response)
+                    return
+
+                # Executing the detected tool calls
+                tool_calls_message = self.__create_tool_calls_message(tool_calls)
+                messages.append(tool_calls_message)
+                if not only_final_answer:
+                    yield tool_calls_message
+
+                executed_calls = self.__execute_tool_calls(tool_calls_message.tool_calls)
+                results = await asyncio.gather(*executed_calls)
+                tool_results_messages: list[Message] = [
+                    ToolResponseMessage(role=MessageRoleEnum.tool, name=call.function.name, tool_call_id=call.id,
+                                        content=str(results[i])) for i, call in
+                    enumerate(tool_calls_message.tool_calls)]
+                if not only_final_answer:
+                    for tool_result_message in tool_results_messages:
+                        yield tool_result_message
+                # Doing the next iteration of the loop with the results to make other tool calls or to answer
+                messages = messages + tool_results_messages
+
     async def __api_generate_answer(self, messages: list[Message], stream: bool = False,
                                     only_final_answer: bool = True):
         """
@@ -78,52 +126,24 @@ class ChatAgent:
 
     async def __dump_api_generate_streamed_answer(self, messages: list[Message], only_final_answer: bool) -> \
             AsyncIterable[str]:
+        """
+        Dump to JSON the generate_answer iterable
+
+        :param messages: Messages to pass to generate_answer
+        :param only_final_answer: Param to pass to generate_answer
+        :return: Iterable of each messages from generate_answer dumped to JSON
+        """
         async for message in self.generate_answer(messages, only_final_answer=only_final_answer):
             yield message.model_dump_json()
 
-    async def generate_answer(self, messages: list[Message], only_final_answer: bool = True) -> AsyncIterable[Message]:
-        """
-        Generate an answer based on a conversation
-
-        :param messages: List of messages previously sent in this conversation
-        :param only_final_answer: Only yields the final answer without include the thought process (tool calls and their response)
-        :return: The string response of the agent
-        """
-        if len(messages) == 0:
-            raise ValueError("No previous message to respond to")
-        if messages[-1].role not in [MessageRoleEnum.user, MessageRoleEnum.tool]:
-            raise ValueError("Last message is not from the user or a tool response")
-
-        while True:
-            prompt = self.model.generate_prompt(messages, self.system_prompt, self.tools)
-            async with aiohttp.ClientSession() as session:
-                response = await self.__call_model(session, prompt)
-
-                if response is None:
-                    # TODO: handle error correctly
-                    raise ValueError("Model didn't respond")
-
-                tool_calls = self.model.extract_tool_calls_from_response(response)
-                if len(tool_calls) == 0:
-                    yield Message(role=MessageRoleEnum.assistant, content=response)
-                    return
-
-                tool_calls_message = self.__create_tool_calls_message(tool_calls)
-                messages.append(tool_calls_message)
-                if not only_final_answer:
-                    yield tool_calls_message
-                executed_calls = self.__execute_tool_calls(tool_calls_message.tool_calls)
-                results = await asyncio.gather(*executed_calls)
-                tool_results_messages: list[Message] = [
-                    ToolResponseMessage(role=MessageRoleEnum.tool, name=call.function.name, tool_call_id=call.id,
-                                        content=str(results[i])) for i, call in
-                    enumerate(tool_calls_message.tool_calls)]
-                if not only_final_answer:
-                    for tool_result_message in tool_results_messages:
-                        yield tool_result_message
-                messages = messages + tool_results_messages
-
     async def __call_model(self, session: ClientSession, prompt: str) -> str | None:
+        """
+        Call the model with a given prompt
+
+        :param session: aiohttp session to use to make the call
+        :param prompt: Prompt to give to the model
+        :return: String response (if no error)
+        """
         params = LlamaCppParams(prompt=prompt, **self.llamacpp_params.model_dump())
 
         async with session.post(self.model.vm_url, json=params.model_dump()) as response:
@@ -134,6 +154,12 @@ class ChatAgent:
         return None
 
     def __execute_tool_calls(self, tool_calls: list[MessageToolCall]) -> list[Awaitable[Any]]:
+        """
+        Execute the given tool calls (without waiting for completion)
+
+        :param tool_calls: Tool calls to run
+        :return: List of tool calls responses to await
+        """
         executed_calls: list[Awaitable[Any]] = []
         for call in tool_calls:
             function_name = call.function.name
@@ -147,6 +173,12 @@ class ChatAgent:
         return executed_calls
 
     def __create_tool_calls_message(self, tool_calls: list[ToolCallFunction]) -> ToolCallMessage:
+        """
+        Craft a tool call message
+
+        :param tool_calls: Tool calls to include in the message
+        :return: Crafted tool call message
+        """
         return ToolCallMessage(role=MessageRoleEnum.assistant,
                                tool_calls=[MessageToolCall(type="function",
                                                            id=self.model.generate_tool_call_id(),

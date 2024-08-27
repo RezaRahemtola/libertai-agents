@@ -21,22 +21,36 @@ class Model(ABC):
     model_id: ModelId
     vm_url: str
     context_length: int
-    system_message: bool
+    include_system_message: bool
 
-    def __init__(self, model_id: ModelId, vm_url: str, context_length: int, system_message: bool = True):
+    def __init__(self, model_id: ModelId, vm_url: str, context_length: int, include_system_message: bool = True):
+        """
+        Creates a new instance of a model
+
+        :param model_id: HuggingFace ID of the model
+        :param vm_url: URL of the completion endpoint
+        :param context_length: Number of tokens allowed
+        :param include_system_message: Define if a system message is supported for this model
+        """
         from transformers import AutoTokenizer
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         self.model_id = model_id
         self.vm_url = vm_url
         self.context_length = context_length
-        self.system_message = system_message
+        self.include_system_message = include_system_message
 
     def __count_tokens(self, content: str) -> int:
+        """
+        Count the number of tokens used in a string prompt
+
+        :param content: Prompt to count
+        :return: Number of token used
+        """
         tokens = self.tokenizer.tokenize(content)
         return len(tokens)
 
-    def generate_prompt(self, messages: list[Message], system_prompt: str, tools: list) -> str:
+    def generate_prompt(self, messages: list[Message], tools: list, system_prompt: str | None = None) -> str:
         """
         Generate the whole chat prompt
 
@@ -45,11 +59,12 @@ class Model(ABC):
         :param tools: Available tools
         :return: Prompt string
         """
-        system_message = Message(role=MessageRoleEnum.system, content=system_prompt)
+        system_messages = [Message(role=MessageRoleEnum.system,
+                                   content=system_prompt)] if self.include_system_message and system_prompt is not None else []
         raw_messages = list(map(lambda x: x.model_dump(), messages))
 
         for i in range(len(raw_messages)):
-            included_messages: list = [system_message] + raw_messages[i:]
+            included_messages: list = system_messages + raw_messages[i:]
             prompt = self.tokenizer.apply_chat_template(conversation=included_messages, tools=tools,
                                                         tokenize=False,
                                                         add_generation_prompt=True)
@@ -70,4 +85,10 @@ class Model(ABC):
     @staticmethod
     @abstractmethod
     def extract_tool_calls_from_response(response: str) -> list[ToolCallFunction]:
+        """
+        Extract tool calls (if any) from a given model response
+
+        :param response: Model response to parse
+        :return: List of found tool calls
+        """
         pass
