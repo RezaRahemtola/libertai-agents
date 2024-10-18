@@ -47,4 +47,4 @@ def get_model(model_id: ModelId, hf_token: str | None = None) -> Model:
     if hf_token is not None:
         login(hf_token)
 
-    return model_configuration.constructor(model_id=model_id, **model_configuration.model_dump(exclude={'constructor'}))
+    return model_configuration.constructor(model_id=model_id, **model_configuration.dict(exclude={'constructor'}))

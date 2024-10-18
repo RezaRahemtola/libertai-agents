@@ -1,4 +1,5 @@
 import asyncio
+import json
 from http import HTTPStatus
 from typing import Callable, Awaitable, Any, AsyncIterable
 
@@ -112,7 +113,7 @@ class ChatAgent:
                                     only_final_answer: bool = True):
         """
         Generate an answer based on an existing conversation.
-        The response messages can be streamed or sent in a single block
+        The response messages can be streamed or sent in a single block.
         """
         if stream:
             return StreamingResponse(
@@ -134,7 +135,7 @@ class ChatAgent:
         :return: Iterable of each messages from generate_answer dumped to JSON
         """
         async for message in self.generate_answer(messages, only_final_answer=only_final_answer):
-            yield message.model_dump_json()
+            yield json.dumps(message.dict(), indent=4)
 
     async def __call_model(self, session: ClientSession, prompt: str) -> str | None:
         """
@@ -144,9 +145,9 @@ class ChatAgent:
         :param prompt: Prompt to give to the model
         :return: String response (if no error)
         """
-        params = LlamaCppParams(prompt=prompt, **self.llamacpp_params.model_dump())
+        params = LlamaCppParams(prompt=prompt, **self.llamacpp_params.dict())
 
-        async with session.post(self.model.vm_url, json=params.model_dump()) as response:
+        async with session.post(self.model.vm_url, json=params.dict()) as response:
             # TODO: handle errors and retries
             if response.status == HTTPStatus.OK:
                 response_data = await response.json()

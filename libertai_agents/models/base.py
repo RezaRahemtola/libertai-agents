@@ -61,7 +61,7 @@ class Model(ABC):
         """
         system_messages = [Message(role=MessageRoleEnum.system,
                                    content=system_prompt)] if self.include_system_message and system_prompt is not None else []
-        raw_messages = list(map(lambda x: x.model_dump(), messages))
+        raw_messages = list(map(lambda x: x.dict(), messages))
 
         for i in range(len(raw_messages)):
             included_messages: list = system_messages + raw_messages[i:]

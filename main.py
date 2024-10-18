@@ -1,4 +1,7 @@
+import asyncio
+
 from libertai_agents.agents import ChatAgent
+from libertai_agents.interfaces.messages import Message, MessageRoleEnum
 from libertai_agents.models import get_model
 
 
@@ -17,14 +20,13 @@ async def get_current_temperature(location: str, unit: str) -> float:
 
 agent = ChatAgent(model=get_model("NousResearch/Hermes-2-Pro-Llama-3-8B"),
                   system_prompt="You are a helpful assistant",
-                  tools=[get_current_temperature])
+                  tools=[get_current_temperature], expose_api=False)
 
-app = agent.app
 
-# async def main():
-#     async for message in agent.generate_answer(
-#             [Message(role=MessageRoleEnum.user, content="What is the temperature in Paris and in Lyon?")]):
-#         print(message)
-#
-#
-# asyncio.run(main())
+async def main():
+    async for message in agent.generate_answer(
+            [Message(role=MessageRoleEnum.user, content="What is the temperature in Paris and in Lyon?")]):
+        print(message)
+
+
+asyncio.run(main())

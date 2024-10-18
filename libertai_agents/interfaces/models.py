@@ -1,8 +1,6 @@
 from pydantic import BaseModel
 
-from libertai_agents.models.base import ModelId
-
 
 class ModelInformation(BaseModel):
-    id: ModelId
+    id: str
     context_length: int
