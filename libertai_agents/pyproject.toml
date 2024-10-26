@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "libertai-agents"
-version = "0.0.17"
+version = "0.0.18"
 description = ""
 authors = ["LibertAI.io team <hello@libertai.io>"]
 readme = "README.md"
@@ -17,7 +17,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "~3.11"
-transformers = "^4.44.0"
+transformers = "^4.46.0"
 pydantic = "^1.10"
 aiohttp = "^3.10"
 fastapi = "^0.112"
