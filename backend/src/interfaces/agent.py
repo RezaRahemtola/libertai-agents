@@ -31,6 +31,7 @@ class Agent(BaseModel):
     subscription_id: str
     vm_hash: str | None
     encrypted_secret: str
+    last_update: int
     tags: list[str]
 
 

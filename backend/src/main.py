@@ -1,3 +1,4 @@
+import time
 from http import HTTPStatus
 from uuid import uuid4
 
@@ -48,6 +49,7 @@ async def setup(body: SetupAgentBody) -> None:
         subscription_id=body.subscription_id,
         vm_hash=None,
         encrypted_secret=encrypted_secret,
+        last_update=int(time.time()),
         tags=[agent_id, body.subscription_id, body.account.address],
     )
 
@@ -127,7 +129,9 @@ async def update(body: UpdateAgentPutBody, code: UploadFile, packages: UploadFil
         # Updating the related POST message
         await client.create_post(
             post_content=Agent(
-                **agent.dict(exclude={"vm_hash"}), vm_hash=message.item_hash
+                **agent.dict(exclude={"vm_hash", "last_update"}),
+                vm_hash=message.item_hash,
+                last_update=int(time.time()),
             ),
             post_type="amend",
             ref=agent.post_hash,
