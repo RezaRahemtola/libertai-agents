@@ -22,7 +22,7 @@ from src.interfaces.aleph import AlephVolume
 from src.utils.agent import fetch_agents, fetch_agent_program_message
 from src.utils.storage import upload_file
 
-app = FastAPI(title="LibertAI subscriptions")
+app = FastAPI(title="LibertAI agents")
 
 origins = [
     "https://chat.libertai.io",
