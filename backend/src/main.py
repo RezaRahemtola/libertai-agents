@@ -1,3 +1,4 @@
+import base64
 import time
 from http import HTTPStatus
 from uuid import uuid4
@@ -40,15 +41,17 @@ app.add_middleware(
 async def setup(body: SetupAgentBody) -> None:
     agent_id = str(uuid4())
 
-    secret = str.encode(str(uuid4()), "utf-8")
+    secret = str(uuid4())
     # Encrypting the secret ID with our public key
-    encrypted_secret = encrypt(config.ALEPH_SENDER_PK, secret).decode()
+    encrypted_secret = encrypt(config.ALEPH_SENDER_PK, secret.encode())
+    # Encoding it in base64 to avoid data loss when stored on Aleph
+    base64_encrypted_secret = base64.b64encode(encrypted_secret).decode()
 
     agent = Agent(
         id=agent_id,
         subscription_id=body.subscription_id,
         vm_hash=None,
-        encrypted_secret=encrypted_secret,
+        encrypted_secret=base64_encrypted_secret,
         last_update=int(time.time()),
         tags=[agent_id, body.subscription_id, body.account.address],
     )
@@ -80,9 +83,10 @@ async def update(body: UpdateAgentPutBody, code: UploadFile, packages: UploadFil
         else None
     )
 
-    decrypted_secret = decrypt(
-        config.ALEPH_SENDER_SK, str.encode(agent.encrypted_secret, "utf-8")
-    ).decode()
+    # Decode the base64 secret
+    encrypted_secret = base64.b64decode(agent.encrypted_secret)
+
+    decrypted_secret = decrypt(config.ALEPH_SENDER_SK, encrypted_secret).decode()
     if body.secret != decrypted_secret:
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED,
