@@ -7,8 +7,7 @@ from aleph.sdk import AuthenticatedAlephHttpClient
 from aleph.sdk.chains.ethereum import ETHAccount
 from aleph_message.models.execution import Encoding
 from ecies import encrypt, decrypt
-from fastapi import FastAPI, HTTPException
-from starlette.datastructures import UploadFile
+from fastapi import FastAPI, HTTPException, UploadFile
 from starlette.middleware.cors import CORSMiddleware
 
 from src.config import config

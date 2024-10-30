@@ -11,7 +11,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
-fastapi = "^0.115.2"
+fastapi = { extras = ["standard"], version = "^0.115.2" }
 aleph-sdk-python = "^1.1.0"
 eciespy = "^0.4.2"
 
