@@ -21,9 +21,8 @@ class SetupAgentBody(DeleteAgentBody):
     account: SubscriptionAccount
 
 
-class UpdateAgentPutBody(BaseModel):
-    id: str
-    secret: str
+class UpdateAgentResponse(BaseModel):
+    vm_hash: str
 
 
 class Agent(BaseModel):

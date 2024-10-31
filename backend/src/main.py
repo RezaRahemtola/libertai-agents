@@ -7,15 +7,15 @@ from aleph.sdk import AuthenticatedAlephHttpClient
 from aleph.sdk.chains.ethereum import ETHAccount
 from aleph_message.models.execution import Encoding
 from ecies import encrypt, decrypt
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from starlette.middleware.cors import CORSMiddleware
 
 from src.config import config
 from src.interfaces.agent import (
     Agent,
-    UpdateAgentPutBody,
     SetupAgentBody,
     DeleteAgentBody,
+    UpdateAgentResponse,
 )
 from src.interfaces.aleph import AlephVolume
 from src.utils.agent import fetch_agents, fetch_agent_program_message
@@ -67,13 +67,18 @@ async def setup(body: SetupAgentBody) -> None:
 
 
 @app.put("/agent", description="Deploy an agent or update it")
-async def update(body: UpdateAgentPutBody, code: UploadFile, packages: UploadFile):
-    agents = await fetch_agents([body.id])
+async def update(
+    agent_id: str = Form(),
+    secret: str = Form(),
+    code: UploadFile = File(...),
+    packages: UploadFile = File(...),
+) -> UpdateAgentResponse:
+    agents = await fetch_agents([agent_id])
 
     if len(agents) != 1:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
-            detail=f"Agent with ID {body.id} not found.",
+            detail=f"Agent with ID {agent_id} not found.",
         )
     agent = agents[0]
     agent_program = (
@@ -86,7 +91,7 @@ async def update(body: UpdateAgentPutBody, code: UploadFile, packages: UploadFil
     encrypted_secret = base64.b64decode(agent.encrypted_secret)
 
     decrypted_secret = decrypt(config.ALEPH_SENDER_SK, encrypted_secret).decode()
-    if body.secret != decrypted_secret:
+    if secret != decrypted_secret:
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED,
             detail="The secret provided doesn't match the one of this agent.",
@@ -105,7 +110,7 @@ async def update(body: UpdateAgentPutBody, code: UploadFile, packages: UploadFil
 
     if agent_program is not None:
         # Program is already deployed and we updated the volumes, exiting here
-        return
+        return UpdateAgentResponse(vm_hash=agent_program.item_hash)
 
     # Register the program
     aleph_account = ETHAccount(config.ALEPH_SENDER_SK)
@@ -140,6 +145,7 @@ async def update(body: UpdateAgentPutBody, code: UploadFile, packages: UploadFil
             ref=agent.post_hash,
             channel=config.ALEPH_CHANNEL,
         )
+    return UpdateAgentResponse(vm_hash=message.item_hash)
 
 
 @app.delete("/agent", description="Remove an agent on subscription end")
