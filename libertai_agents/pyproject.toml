@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "libertai-agents"
+name = "changcheon-dong"
 version = "0.0.18"
 description = ""
 authors = ["LibertAI.io team <hello@libertai.io>"]
@@ -12,7 +12,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Development Status :: 2 - Pre-Alpha",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Programming Language :: Python :: 3.11"
+    "Programming Language :: Python :: 3.11",
 ]
 
 [tool.poetry.dependencies]
