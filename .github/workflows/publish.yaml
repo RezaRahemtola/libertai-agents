@@ -13,7 +13,7 @@ jobs:
         working-directory: ./libertai_agents
     environment:
       name: pypi
-      url: https://test.pypi.org/project/changcheon-dong
+      url: https://pypi.org/project/changcheon-dong
     permissions:
       id-token: write
     steps:
@@ -31,5 +31,4 @@ jobs:
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://test.pypi.org/legacy/
           packages-dir: ./libertai_agents/dist
